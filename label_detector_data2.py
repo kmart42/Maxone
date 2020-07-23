@@ -1,6 +1,7 @@
 from DetectorBackend.utils.load_avi import load_relevant_frames_labels
 from DetectorBackend.make.detector import crop_to_hoop
 from DetectorBackend.utils.load_avi import load_avi
+import DetectorBackend.master.detector as detector
 import DetectorBackend.hoop.detector as hoop_detect
 import DetectorBackend.make.detector as make_detect
 import DetectorBackend.utils.load_avi as load_avi2
@@ -12,15 +13,16 @@ import os
 # Globals
 MAX_FRAMES = 999999
 start_frame = 0  # edit here for files larger than 5000 frames
-avi_resize = (640, 480)
-FILE_NAME = 'Thu_Jan_30_13-17-10_2020_data'
+# avi_resize = (640, 480)
+avi_resize = (800, 600)
+FILE_NAME = 'Brad_Niley_55'
 EXT = '.avi'
-DATA_SET = 'Thu_new/'
-OUTPUT_PATH = '/home/kebin/MaxoneData/ShootawayNew/' + DATA_SET
-#VID_PATH = '/home/kebin/MaxoneData/Test/'
-VID_PATH = '/home/kebin/MaxoneData/ShootawayNew/' + DATA_SET + '/'
-OUTPUT_PATH_POS = OUTPUT_PATH + '/Positive/'
-OUTPUT_PATH_NEG = OUTPUT_PATH + '/Negative/'
+DATA_SET = '\\Womens\\'
+OUTPUT_PATH = 'C:\\Users\\Captain\\MaxOne\\Data' + DATA_SET
+VID_PATH = 'C:\\Users\\Captain\\MaxOne\\Data' + DATA_SET
+# VID_PATH = '/home/kebin/MaxoneData/ShootawayNew/' + DATA_SET + '/'
+OUTPUT_PATH_POS = OUTPUT_PATH + '\\Positive\\'
+OUTPUT_PATH_NEG = OUTPUT_PATH + '\\Negative\\'
 OUTPUT_PATH_LABEL = OUTPUT_PATH + 'Labels/'
 OUTPUT_PATH_POS_NEW = OUTPUT_PATH + '/PositiveNew/'
 OUTPUT_PATH_NEG_NEW = OUTPUT_PATH + '/NegativeNew/'
@@ -33,7 +35,8 @@ LAB_REMOVE = 115  # s
 
 # detectors
 hoop_detector = hoop_detect.HoopDetector()
-make_detector = make_detect.Detector(path='../make/makenetv1.3.tflite')
+make_detector = make_detect.Detector(path='../make/makenetv1.6_proto.tflite')
+detector_frame = detector.MasterDetector()
 
 # Process global
 # 1: indirect pos/neg (capture all negatives)
@@ -43,10 +46,12 @@ make_detector = make_detect.Detector(path='../make/makenetv1.3.tflite')
 # 5: combine pickled lists
 # 6: direct pos/neg, with pre-formatted frames (no crop)
 # 7: misc
-PROC_GLOBAL = 3
+PROC_GLOBAL = 2
 
 
 def crop_frame(blob, frame):
+    cut = 60, 80
+    frame = frame[cut[0]:-cut[0], cut[1]:-cut[1], :]
     blob = [(blob[0][0] * 2, blob[0][1] * 2), blob[1] * 4]
     x_min = np.clip(blob[0][1] - blob[1], 0, None).astype(int)
     y_min = np.clip(blob[0][0] - blob[1], 0, None).astype(int)
@@ -144,7 +149,7 @@ elif PROC_GLOBAL == 2:
             x += 1
 
             ret, frame = cap.read()
-            if not ret or x > 5000 + start_frame:
+            if not ret or x > 500 + start_frame:
                 print('Done read')
                 break
 
@@ -173,10 +178,9 @@ elif PROC_GLOBAL == 2:
         raw_frame = frames[i]
 
         # get hoop pose
-        hoop_detector(raw_frame)
-
-        if hoop_detector.hoop_radius is not None:
-            hoop_blob = [(hoop_detector.hoop_center), hoop_detector.hoop_radius]
+        detector_frame(raw_frame)
+        if detector_frame.hoop_blob is not None and detector_frame.hoop_blob[1] is not None:
+            hoop_blob = detector_frame.hoop_blob
 
         cropped_frames = [crop_frame(hoop_blob, frames[i + x]) for x in range(-2 - skip_rate, 1 + skip_rate)]
         cropped_frames = [cropped_frames[0], cropped_frames[len(cropped_frames) // 2], cropped_frames[-1]]
